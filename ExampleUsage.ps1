@@ -1,21 +1,34 @@
-﻿# Must have the SharePoint 2013 Client dlls installed see:
-# http://www.microsoft.com/en-us/download/details.aspx?id=35585
+﻿# Must have the SharePoint Client dlls installed see:
+# SharePoint 2013 - http://www.microsoft.com/en-us/download/details.aspx?id=35585
+# SharePoint Online - http://www.microsoft.com/en-us/download/details.aspx?id=42038
 
-[System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Sharepoint.Client")
-[System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint.Client.Taxonomy")
+$CSOMdir = "${env:CommonProgramFiles}\microsoft shared\Web Server Extensions\16\ISAPI"
+$excludeDlls = "*.Portable.dll"   
+if ((Test-Path $CSOMdir -pathType container) -ne $true)
+{
+    $CSOMdir = "${env:CommonProgramFiles}\microsoft shared\Web Server Extensions\15\ISAPI"
+    if ((Test-Path $CSOMdir -pathType container) -ne $true)
+    {
+        Throw "Please install the SharePoint 2013[1] or SharePoint Online[2] Client Components`n `n[1] http://www.microsoft.com/en-us/download/details.aspx?id=35585`n[2] http://www.microsoft.com/en-us/download/details.aspx?id=42038`n `n "
+    }
+}
+$CSOMdlls = Get-Item "$CSOMdir\*.dll" -exclude $excludeDlls 
+ForEach ($dll in $CSOMdlls) {
+    [System.Reflection.Assembly]::LoadFrom($dll.FullName) | Out-Null
+}
 
-$siteUrl = "https://sp2013dev:1000/"	
+$siteUrl = "https://tenant.sharepoint.com"
+$username = "username@tenant.com"
+$domain = "domain"
+$password = Read-Host -Prompt "Enter Password for $username" -AsSecureString
+
 $ctx = New-Object Microsoft.SharePoint.Client.ClientContext($siteUrl)
+# do not set $ctx.Credentials if you want default credentials to be used
+#$ctx.Credentials = New-Object System.Net.NetworkCredential($username, $password, $domain)
+#$ctx.Credentials = New-Object Microsoft.Sharepoint.Client.SharePointOnlineCredentials($username, $password)
 
-## Example for Office 365 SharePoint Online
-## http://msdn.microsoft.com/EN-US/library/microsoft.sharepoint.client.sharepointonlinecredentials.aspx
 
-#$siteURL = "https://mysite.sharepoint.com"
-#$username = "admin@mysite.sharepoint.com"
-#$password = Read-Host -Prompt "Enter Password" -AsSecureString
-#$SharePointOnlineCredentials = New-Object Microsoft.Sharepoint.Client.SharePointOnlineCredentials($username, $password)
-#$ctx.Credentials = $SharePointOnlineCredentials
+$myScriptPath = (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
-.\TaxonomyBackup.ps1 -ClientContext $ctx -LiteralPath "C:\TermStoreBackup"
-
-.\TaxonomyRestore.ps1 -ClientContext $ctx -LiteralPath "C:\TermStoreBackup\2012-03-14_15-27-59_mms_bak.xml"
+#. "$myScriptPath\TaxonomyBackup.ps1" -ClientContext $ctx -LiteralPath "C:\TermStoreBackup"
+. "$myScriptPath\TaxonomyRestore.ps1" -ClientContext $ctx -LiteralPath "C:\TermStoreBackup\2014-3-19_13-26-58_mms_bak.xml"
